@@ -1,0 +1,7 @@
+{
+  "appId": "cl.misboletas.app",
+  "appName": "Mis Boletas",
+  "webDir": "dist",
+  "android": { "allowMixedContent": false },
+  "server": { "androidScheme": "https" }
+}
