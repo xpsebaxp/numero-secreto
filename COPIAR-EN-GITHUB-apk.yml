@@ -1,0 +1,73 @@
+# Compila el APK automáticamente en GitHub cada vez que subes cambios (o a mano desde la pestaña Actions).
+# El APK queda para descargar en: Actions → la ejecución más reciente → Artifacts → "mis-boletas-apk".
+name: Compilar APK
+
+on:
+  push:
+    branches: [main, master, mis-boletas-apk]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Compilar la web app
+        run: npm run build
+
+      - name: Crear proyecto Android (si no existe)
+        run: |
+          if [ ! -d android ]; then npx cap add android; fi
+          npx cap sync android
+
+      - name: Permiso de cámara
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.CAMERA' $M || sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#&\n    <uses-permission android:name="android.permission.CAMERA" />#' $M
+
+      - name: Íconos y pantalla de inicio
+        run: npx --yes @capacitor/assets generate --android --iconBackgroundColor '#14532d' --splashBackgroundColor '#f6f3ec' || echo "Se mantienen los íconos por defecto"
+
+      - name: Compilar APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Renombrar APK
+        run: mv android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/debug/mis-boletas.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mis-boletas-apk
+          path: android/app/build/outputs/apk/debug/mis-boletas.apk
+
+      - name: Publicar APK en Releases
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Mis Boletas v1.0.${{ github.run_number }}
+          body: |
+            APK de Mis Boletas. Descarga `mis-boletas.apk` desde tu teléfono Android y ábrelo
+            (acepta "instalar apps de origen desconocido" si te lo pide).
+          files: android/app/build/outputs/apk/debug/mis-boletas.apk
