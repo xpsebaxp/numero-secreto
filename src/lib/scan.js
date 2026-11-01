@@ -122,7 +122,8 @@ export async function ocrText(canvas, onProgress) {
       workerPath: asset('vendor/tesseract/worker.min.js'),
       corePath: asset('vendor/tesseract/'),
       langPath: asset('vendor/tesseract/'),
-      gzip: true,
+      // En el APK, Android descomprime los .gz al empaquetar; en la web se sirve comprimido
+      gzip: !window.Capacitor?.isNativePlatform?.(),
       cacheMethod: 'none',
       logger: (m) => { if (onProgress && m.status === 'recognizing text') onProgress(m.progress); },
     });
