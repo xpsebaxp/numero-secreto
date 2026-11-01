@@ -69,3 +69,15 @@ jobs:
             APK de Mis Boletas. Descarga `mis-boletas.apk` desde tu teléfono Android y ábrelo
             (acepta "instalar apps de origen desconocido" si te lo pide).
           files: android/app/build/outputs/apk/debug/mis-boletas.apk
+
+      - name: Guardar APK en la rama apk-build
+        if: github.ref == 'refs/heads/mis-boletas-apk'
+        run: |
+          mkdir /tmp/out && cp android/app/build/outputs/apk/debug/mis-boletas.apk /tmp/out/
+          cd /tmp/out
+          git init -q -b apk-build
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add mis-boletas.apk
+          git commit -q -m "APK build ${{ github.run_number }}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" apk-build
